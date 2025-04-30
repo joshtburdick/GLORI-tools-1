@@ -1,0 +1,107 @@
+usage: run_GLORI.py [-h] [-i [NSDIR]] [-q [FASTQ]] [-f [REFERENCE]]
+                    [-f2 [REFERENCE2]] [-rvs [RVSREF]]
+                    [-Tf [TRANSREF]] [-a [ANNO]] [--combine]
+                    [--untreated] [--rvs_fac]
+                    [-pre [OUTNAME_PREFIX]] [-o [OUTPUTDIR]]
+                    [-F [FILTERN]] [-b [BASEANNO]]
+                    [-t [{STAR,bowtie}]] [-T [THREADS]]
+                    [-mulMax [MULMAX]] [-m [MISMATCH]] [-c COVERAGE]
+                    [-C COUNT] [-r RATIO] [-p PVALUE]
+                    [-adp ADJUSTPVALUE] [-s SIGNAL] [-R VAR_RATIO]
+                    [-g GENE_CR] [-N AG_NUMBER]
+                    [--method {binomial,poisson}]
+                    [--CR {gene,overall}]
+                    [--NA {ELSE,Median,Mean,ALL,discard}]
+                    [--cutoff {1,2,3,4,5,6,7,8,9,10,15,20,None}]
+
+GLORI-tools for detecting m6A sites from high-throughput sequencing
+data
+
+options:
+  -h, --help            show this help message and exit
+
+Required:
+  -i [NSDIR], --NSdir [NSDIR]
+                        Directory where GLORI-tool is located
+  -q [FASTQ], --fastq [FASTQ]
+                        fastq files with surfix as
+                        _1.fq;_1.fastq;_2.fq;_2.fastq
+  -f [REFERENCE], --reference [REFERENCE]
+                        Index file for the plus strand of the genome
+  -f2 [REFERENCE2], --reference2 [REFERENCE2]
+                        Index file for the unchanged genome
+  -rvs [RVSREF], --rvsref [RVSREF]
+                        Index file for the minus strand of the
+                        genome
+  -Tf [TRANSREF], --transref [TRANSREF]
+                        Index file for the minus strand of the
+                        transcriptome
+  -a [ANNO], --anno [ANNO]
+                        Annotation file within exons
+  --combine, --combine  Whether mapping to transcriptome
+  --untreated, --untreated
+                        If the input is untreated
+  --rvs_fac, --rvs_fac  Whether to map to the reverse strand of the
+                        transcriptome
+
+Output (optional):
+  -pre [OUTNAME_PREFIX], --outname_prefix [OUTNAME_PREFIX]
+                        Output file prefix
+  -o [OUTPUTDIR], --outputdir [OUTPUTDIR]
+                        Output directory
+
+Mapping conditions (optional):
+  -F [FILTERN], --FilterN [FILTERN]
+                        The setting for the STAR parameter
+                        --outFilterScoreMinOverLread
+  -b [BASEANNO], --baseanno [BASEANNO]
+                        Annotations at single-base resolution
+  -t [{STAR,bowtie}], --tools [{STAR,bowtie}]
+                        We recommend using STAR for genome alignment
+                        and Bowtie for transcriptome alignment.
+  -T [THREADS], --Threads [THREADS]
+                        Used threads
+  -mulMax [MULMAX], --mulMax [MULMAX]
+                        Suppress all alignments if > <int> exist
+  -m [MISMATCH], --mismatch [MISMATCH]
+                        Permitted mapping mismatches
+
+m6A filter (optional):
+  -c COVERAGE, --coverage COVERAGE
+                        A+G coverage
+  -C COUNT, --count COUNT
+                        A coverage
+  -r RATIO, --ratio RATIO
+                        m6A level or A rate
+  -p PVALUE, --pvalue PVALUE
+                        P-value cutoff for statistical test
+  -adp ADJUSTPVALUE, --adjustpvalue ADJUSTPVALUE
+                        Cutoff for FDR-adjusted p-value
+  -s SIGNAL, --signal SIGNAL
+                        signal ratio, The reads coverage (below the
+                        A-cutoff) divided by the total coverage is
+                        used to exclude false positives located in
+                        regions resistant to nitrite treatment
+  -R VAR_RATIO, --var_ratio VAR_RATIO
+                        The A+G coverage divided by the total
+                        coverage is used to exclude mapping errors
+  -g GENE_CR, --gene_CR GENE_CR
+                        Any m6A sites within a gene with an A-to-G
+                        conversion rate below the cutoff will be
+                        discarded
+  -N AG_NUMBER, --AG AG_NUMBER
+                        Any m6A sites within a gene with an A+G
+                        coverage below the cutoff will be discarded
+
+Statistic method (optional):
+  --method {binomial,poisson}
+                        Statistical method to test the significance
+                        of m6A.
+  --CR {gene,overall}   The control conversion rate used to
+                        establish statistical models
+  --NA {ELSE,Median,Mean,ALL,discard}
+                        Determining which CR to use for the sites
+                        that are not annotated to any genes
+  --cutoff {1,2,3,4,5,6,7,8,9,10,15,20,None}
+                        A-cutoffs, The cutoff for the minimum number
+                        of remained A bases in each read

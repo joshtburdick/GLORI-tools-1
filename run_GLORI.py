@@ -150,16 +150,19 @@ def run_command(file,combine,untreated,rvs_fac,Threads):
     for CR_c in chr_list:
         chr_x = CR_c.split("_AG_converted")[0]
         file = outputprefix+".CR.txt."+chr_x
-        CR1 = pd.read_csv(file, sep="\t", names=['SA', 'Totalcovered_reads', 'Remained A reads', 'Non-A-to-G ratio','Mapped_area'])
-        CR2 = CR1[~CR1['SA'].isin(['#ALL', '#90%', '#75%', '#50%', '#25%', '#10%', '#Median', '#Mean'])][['SA', 'Non-A-to-G ratio']]
-        xx_median = CR1[CR1['SA'] == '#Median']['Totalcovered_reads'].values.tolist()
-        pd_median = pd.DataFrame({'SA': ["#Median_"+chr_x], 'Non-A-to-G ratio': xx_median})
+        # modification to skip empty files; see
+        # https://github.com/liucongcas/GLORI-tools/issues/17#issuecomment-1945704088
+        # some CR files are empty, remove them
+        if os.path.getsize(file):
+            CR1 = pd.read_csv(file, sep="\t", names=['SA', 'Totalcovered_reads', 'Remained A reads', 'Non-A-to-G ratio','Mapped_area'])
+            CR2 = CR1[~CR1['SA'].isin(['#ALL', '#90%', '#75%', '#50%', '#25%', '#10%', '#Median', '#Mean'])][['SA', 'Non-A-to-G ratio']]
+            xx_median = CR1[CR1['SA'] == '#Median']['Totalcovered_reads'].values.tolist()
+            pd_median = pd.DataFrame({'SA': ["#Median_"+chr_x], 'Non-A-to-G ratio': xx_median})
+            pd_CR_t = pd.concat([pd_median,CR2])
+            pd_CR_t['A-to-G_ratio'] = 1 - pd_CR_t ['Non-A-to-G ratio']
+            pd_x1 = pd_CR_t[['SA', 'A-to-G_ratio']]
 
-        pd_CR_t = pd.concat([pd_median,CR2])
-        pd_CR_t['A-to-G_ratio'] = 1 - pd_CR_t ['Non-A-to-G ratio']
-        pd_x1 = pd_CR_t[['SA', 'A-to-G_ratio']]
-
-        pd_CR = pd.concat([pd_CR, pd_x1])
+            pd_CR = pd.concat([pd_CR, pd_x1])
     pd_CR.to_csv(final_CR,sep="\t",index=False)
 
     print("cat " + outputprefix + ".callsites" + "*." + str(Acutoffs) + ".txt > " + final_sites1)
@@ -299,8 +302,11 @@ if __name__ == "__main__":
     FilterN = str(options.FilterN)
     outputprefix = outputdir + "/" + prx
     if options.untreated:
-        genome = genome.split(".AG_conversion.fa")[0]
-        transgenome = transgenome.split(".AG_conversion.fa")[0]
+        # jtb: tweaking this, based on
+        # https://github.com/liucongcas/GLORI-tools/issues/18
+        genome = genome2
+        # genome = genome.split(".AG_conversion.fa")[0]
+        # transgenome = transgenome.split(".AG_conversion.fa")[0]
 
     if baseanno == 'None':
         background = 'overall'

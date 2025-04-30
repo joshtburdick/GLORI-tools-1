@@ -83,7 +83,7 @@ def build_index(changed_refer,tool,Threads):
         fh = pysam.FastaFile(changed_refer)
         transcriptomesize = sum(fh.lengths)
         Nbases = int(round(min(14, np.log2(transcriptomesize)/2 - 1)))
-        command2 = 'STAR --runMode transcriptomeGenerate -runThreadN ' + str(Threads) + ' --transcriptomeDir ' + filedir_STAR + \
+        command2 = 'STAR --runMode transcriptomeGenerate --runThreadN ' + str(Threads) + ' --transcriptomeDir ' + filedir_STAR + \
                  ' --transcriptomeFastaFiles ' + changed_refer + ' --transcriptomeSAindexNbases '+ str(Nbases) + ' --limittranscriptomeGenerateRAM 84807429045'
         print(command2)
         subprocess.call(command2,shell=True)

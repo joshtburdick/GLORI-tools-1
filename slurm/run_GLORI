@@ -1,0 +1,132 @@
+#!/bin/bash
+#SBATCH --job-name=run_GLORI
+#SBATCH --partition=FIXME
+#SBATCH --mem=64G
+#SBATCH -N 1         # max nodes
+#SBATCH --time=4-0:00:00
+#SBATCH --cpus-per-task=16
+#SBATCH --output=slurm_log/%x-%j.log
+
+# Runs GLORI-seq on a subset of samples.
+
+# load modules
+module load anaconda trimgalore seqkit fastx-toolkit star bowtie samtools fastp fastqc
+
+# load subset of modules which aren't installed by default, from a venv.
+# pip3 install pysam pandas Bio statsmodels
+source (FIXME path to venv, if you use this)
+
+# where the index is
+glori_index_dir="FIXME path to GLORI index"
+# where the GLORI-seq tools (from Github) are
+tooldir="FIXME path to git/liucongcas/GLORI-tools/"
+# number of threads to use
+Thread=16
+
+# parse arguments
+
+if [[ $# -ne 3 ]]
+then
+	echo expected three arguments: mode input_fastq outputdir
+	echo   where mode is one of:
+	echo   'with_annotation', 'without_annotation', or 'untreated'
+	exit 1
+fi
+
+mode=$1
+input_fastq=$2
+output_dir=$3
+
+# for now, hard-coding UMI length
+UMI_length=10
+
+echo running with args: $mode $input_fastq $outputdir
+
+# check mode
+if [[ ! ( ${mode} == "with_annotation" || ${mode} == "without_annotation" || ${mode} == "untreated" ) ]]
+then
+	echo unknown mode ${mode}: should be one of
+	echo   'with_annotation', 'without_annotation', or 'untreated'
+	exit 1
+fi
+
+echo `date`: trimming reads
+
+output_base=$(basename ${input_fastq} .fastq)
+# also trim off other possible suffixes
+output_base=$(basename ${output_base} .fastq.gz)
+output_base=$(basename ${output_base} .fq.gz)
+
+# based on README, and paper
+# note that trim_galore recommends not using more than 8 cores
+echo `date`: running trim_galore on ${input_file}
+trim_galore -q 20 --stringency 1 -e 0.3 --cores 8 \
+--length $(( ${UMI_length} + 25 )) \
+--path_to_cutadapt cutadapt --dont_gzip \
+-o ${output_dir} \
+${input_fastq}
+
+# trying fastp for removing duplicates
+fastp \
+-i ${output_dir}/${output_base}_trimmed.fq \
+-o ${output_dir}/${output_base}.rmdup.fq \
+--json ${output_dir}/${output_base}.fastp.json \
+--thread 8 --dedup --dup_calc_accuracy 6 \
+--disable_adapter_trimming --disable_trim_poly_g --disable_quality_filtering --disable_length_filtering
+
+echo `date`: running fastx_trimmer
+trimmed_fastq=${output_dir}/${output_base}.trimmed2.fq
+fastx_trimmer -Q 33 -f $(( ${UMI_length}+1 )) \
+-i ${output_dir}/${output_base}.rmdup.fq  \
+-o ${trimmed_fastq}
+
+echo `date`: running FastQC
+fastqc ${trimmed_fastq}
+
+echo `date`: running GLORI pipeline
+
+#### 4.1 Example shell scripts
+genomdir=${glori_index_dir}
+genome=${genomdir}/hg38.AG_conversion.fa
+genome2=${genomdir}/hg38.fa
+rvsgenome=${genomdir}/hg38.rvsCom.fa
+TfGenome=${genomdir}/GCF_000001405.39_GRCh38.p13_rna2.fa.AG_conversion.fa
+annodir=${genomdir}
+baseanno=${annodir}/GCF_000001405.39_GRCh38.p13_genomic.gtf_change2Ens.tbl2.noredundance.base
+anno=${annodir}/GCF_000001405.39_GRCh38.p13_genomic.gtf_change2Ens.tbl2
+
+if [[ ${mode} == "with_annotation" ]]
+then
+	echo `date` running with annotation
+	echo 4.2 Call m6A sites annotated with genes
+	/usr/bin/time -v python ${tooldir}/run_GLORI.py -i $tooldir -q ${trimmed_fastq} \
+	  -T $Thread -f ${genome} -f2 ${genome2} -rvs ${rvsgenome} -Tf ${TfGenome} \
+	  -a $anno -b $baseanno -pre GLORI_output -o $output_dir --combine --rvs_fac
+	echo `date` finished running
+	exit 0
+fi
+
+if [[ ${mode} == "without_annotation" ]]
+then
+	echo `date` running without annotation
+	echo 4.3 Call m6A sites without annotated genes
+	/usr/bin/time -v python ${tooldir}/run_GLORI.py -i $tooldir -q ${trimmed_fastq} \
+	  -T $Thread -f ${genome} -f2 ${genome2} -rvs ${rvsgenome} -Tf ${TfGenome} \
+	  -a ${anno} -pre GLORI_output -o ${output_dir} --combine --rvs_fac
+	echo `date` finished running
+	exit 0
+fi
+
+if [[ ${mode} == "untreated" ]]
+then
+	echo `date` running untreated analysis
+	echo 4.4 mapping with samples without GLORI treatment
+	/usr/bin/time -v python ${tooldir}/run_GLORI.py -i ${tooldir} -q ${trimmed_fastq} \
+	   -T ${Thread} -f ${genome} -f2 ${genome2} -Tf ${TfGenome} \
+	   -a ${anno} -pre GLORI_output -o ${output_dir} --untreated
+# based on this, omitting the "--combine" option
+# https://github.com/liucongcas/GLORI-tools/issues/18
+	echo `date` finished running
+	exit 0
+fi
+
